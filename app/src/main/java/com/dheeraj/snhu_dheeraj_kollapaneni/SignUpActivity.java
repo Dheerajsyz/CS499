@@ -3,20 +3,25 @@ package com.dheeraj.snhu_dheeraj_kollapaneni;
 import android.content.Intent;
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.util.Log;
 import android.util.Patterns;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import com.google.firebase.auth.AuthResult;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.auth.FirebaseAuthUserCollisionException;
 
 public class SignUpActivity extends AppCompatActivity {
 
-    private EditText etUsername, etPassword, etEmail, etPhone;
+    private EditText etUsername, etEmail, etPassword, etPhone;
     private Button btnSignUp;
+    private FirebaseAuth auth;
     private DatabaseHelper dbHelper;
 
     @Override
@@ -24,69 +29,65 @@ public class SignUpActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_signup);
 
+        auth = FirebaseAuth.getInstance();
+        dbHelper = new DatabaseHelper();
+
         etUsername = findViewById(R.id.etUsername);
-        etPassword = findViewById(R.id.etPassword);
         etEmail = findViewById(R.id.etEmail);
+        etPassword = findViewById(R.id.etPassword);
         etPhone = findViewById(R.id.etPhone);
         btnSignUp = findViewById(R.id.btnSignUp);
 
-        dbHelper = new DatabaseHelper(this);
+        btnSignUp.setOnClickListener(v -> registerUser());
+    }
 
-        btnSignUp.setOnClickListener(v -> {
-            String username = etUsername.getText().toString();
-            String password = etPassword.getText().toString();
-            String email = etEmail.getText().toString();
-            String phone = etPhone.getText().toString();
+    private void registerUser() {
+        String username = etUsername.getText().toString().trim();
+        String email = etEmail.getText().toString().trim();
+        String password = etPassword.getText().toString().trim();
+        String phone = etPhone.getText().toString().trim();
 
-            if (validateInput(username, password, email, phone)) {
-                // Check if the username or email already exists
-                if (dbHelper.checkUserExists(username, email)) {
-                    Toast.makeText(SignUpActivity.this, "Username or email already exists", Toast.LENGTH_SHORT).show();
-                } else {
-                    if (dbHelper.addUser(username, password, email, phone)) {
-                        Toast.makeText(SignUpActivity.this, "User registered successfully!", Toast.LENGTH_SHORT).show();
-                        startActivity(new Intent(SignUpActivity.this, LoginActivity.class));
-                        finish();
+        if (TextUtils.isEmpty(email) || TextUtils.isEmpty(password) || TextUtils.isEmpty(username) || TextUtils.isEmpty(phone)) {
+            Toast.makeText(this, "All fields are required", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+            Toast.makeText(this, "Enter a valid email", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        if (password.length() < 6) {
+            Toast.makeText(this, "Password must be at least 6 characters", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        auth.createUserWithEmailAndPassword(email, password)
+                .addOnCompleteListener(task -> {
+                    if (task.isSuccessful()) {
+                        FirebaseUser firebaseUser = auth.getCurrentUser();
+                        if (firebaseUser != null) {
+                            dbHelper.addUser(username, email, phone, "user") // FIXED: Pass "user" instead of boolean
+                                    .addOnSuccessListener(aVoid -> navigateToLogin())
+                                    .addOnFailureListener(e -> {
+                                        Log.e("SignUpActivity", "Error adding user to Firestore: " + e.getMessage());
+                                        Toast.makeText(SignUpActivity.this, "Error saving user", Toast.LENGTH_SHORT).show();
+                                    });
+                        }
                     } else {
-                        Toast.makeText(SignUpActivity.this, "Registration failed!", Toast.LENGTH_SHORT).show();
+                        if (task.getException() instanceof FirebaseAuthUserCollisionException) {
+                            Toast.makeText(SignUpActivity.this, "This email is already registered. Try logging in.", Toast.LENGTH_LONG).show();
+                        } else {
+                            String errorMessage = task.getException() != null ? task.getException().getMessage() : "Registration failed";
+                            Log.e("SignUpActivity", "Registration failed: " + errorMessage);
+                            Toast.makeText(SignUpActivity.this, "Registration failed: " + errorMessage, Toast.LENGTH_LONG).show();
+                        }
                     }
-                }
-            }
-        });
+                });
     }
 
-    private boolean validateInput(String username, String password, String email, String phone) {
-        // Username policy: must be at least 4 characters and alphanumeric
-        if (TextUtils.isEmpty(username) || username.length() < 4 || !username.matches("[a-zA-Z0-9]+")) {
-            Toast.makeText(this, "Username must be at least 4 characters and alphanumeric", Toast.LENGTH_SHORT).show();
-            return false;
-        }
-
-        // Password policy: at least 8 characters, contains uppercase, lowercase, digit, special character
-        if (!isValidPassword(password)) {
-            Toast.makeText(this, "Password must be at least 8 characters long, and contain an uppercase letter, lowercase letter, digit, and special character", Toast.LENGTH_LONG).show();
-            return false;
-        }
-
-        // Email policy: valid email format
-        if (TextUtils.isEmpty(email) || !Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
-            Toast.makeText(this, "Please enter a valid email address", Toast.LENGTH_SHORT).show();
-            return false;
-        }
-
-        // Phone policy: valid 10-digit phone number (assuming US phone number)
-        if (TextUtils.isEmpty(phone) || !phone.matches("\\d{10}")) {
-            Toast.makeText(this, "Please enter a valid 10-digit phone number", Toast.LENGTH_SHORT).show();
-            return false;
-        }
-
-        return true;
-    }
-
-    private boolean isValidPassword(String password) {
-        String passwordPattern = "^(?=.*[0-9])(?=.*[A-Z])(?=.*[a-z])(?=.*[@#$%^&+=!]).{8,}$";
-        Pattern pattern = Pattern.compile(passwordPattern);
-        Matcher matcher = pattern.matcher(password);
-        return matcher.matches();
+    private void navigateToLogin() {
+        startActivity(new Intent(SignUpActivity.this, LoginActivity.class));
+        finish();
     }
 }

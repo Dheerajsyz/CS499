@@ -6,6 +6,7 @@
     android:layout_height="wrap_content"
     android:padding="8dp">
 
+    <!-- Event Name -->
     <TextView
         android:id="@+id/tvEventName"
         android:layout_width="0dp"
@@ -14,8 +15,11 @@
         android:textStyle="bold"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintEnd_toStartOf="@+id/btnEdit" />
+        app:layout_constraintEnd_toStartOf="@+id/btnApprove"
+        android:ellipsize="end"
+        android:maxLines="1"/>
 
+    <!-- Event Date -->
     <TextView
         android:id="@+id/tvEventDate"
         android:layout_width="wrap_content"
@@ -24,6 +28,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/tvEventName" />
 
+    <!-- Event Time -->
     <TextView
         android:id="@+id/tvEventTime"
         android:layout_width="wrap_content"
@@ -32,34 +37,23 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/tvEventDate" />
 
-    <TextView
-        android:id="@+id/tvEventLocation"
+    <!-- Approve Button -->
+    <Button
+        android:id="@+id/btnApprove"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Event Location"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/tvEventTime" />
-
-    <ImageButton
-        android:id="@+id/btnEdit"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:contentDescription="Edit"
-        android:background="?attr/selectableItemBackground"
-        android:src="@android:drawable/ic_menu_edit"
-        app:layout_constraintTop_toTopOf="parent"
+        android:text="Approve"
         app:layout_constraintEnd_toEndOf="parent"
-        android:tint="?attr/colorPrimary" />
+        app:layout_constraintTop_toTopOf="parent" />
 
-    <ImageButton
-        android:id="@+id/btnDelete"
+    <!-- Decline Button -->
+    <Button
+        android:id="@+id/btnDecline"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:contentDescription="Delete"
-        android:background="?attr/selectableItemBackground"
-        android:src="@android:drawable/ic_menu_delete"
-        app:layout_constraintTop_toBottomOf="@id/btnEdit"
+        android:text="Decline"
         app:layout_constraintEnd_toEndOf="parent"
-        android:tint="?attr/colorPrimary" />
+        app:layout_constraintTop_toBottomOf="@id/btnApprove"
+        app:layout_constraintBottom_toBottomOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
