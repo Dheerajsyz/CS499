@@ -1,78 +1,78 @@
-# Enhancement Two: Algorithms & Data Structures
+# Enhancement Three: Databases
 
 **Author:** Dheeraj Kollapaneni  
-**Date:** March 28, 2025
+**Date:** April 3, 2025
 
 ## Artifact Overview
 
-- **Project:** Android Event Manager App (CS-360)
-- **Pre‑Enhancement:** User authentication and CRUD operations via Firebase Firestore
+- **Project:** Android Event Manager App (CS-360)  
+- **Original Backend:** SQLite for local event storage  
+- **Limitation:** Lacked scalability, multi-user sync, remote access
 
 ## Enhancement Summary
 
-For **Milestone Three**, I implemented an advanced **search & filtering** feature to demonstrate algorithmic and data structure proficiency:
-<img width="150" alt="image" src="https://github.com/user-attachments/assets/a392972c-bc99-41d1-9e39-04c0b58b9166" />
-<img width="150" alt="image" src="https://github.com/user-attachments/assets/560d9834-4f95-4294-ab00-ab6fb0f280d8" />
-<img width="150" alt="image" src="https://github.com/user-attachments/assets/f4a2c46b-a71d-45bf-9d78-634ee42e37f5" />
-<img width="150" alt="image" src="https://github.com/user-attachments/assets/e2713aa6-792c-4ffb-8c07-3fee29eace46" />
+In this **Databases** enhancement, I migrated the app’s data layer from **SQLite** to **Google Firebase Firestore**, enabling:
+
+- **Real-time data sync** across devices
+- **Cloud-based storage** and remote access
+- **Role-based security rules** (users vs. admins)
+- **Offline support** with Firestore caching
+<img width="372" alt="image" src="https://github.com/user-attachments/assets/0c721d05-f12c-4a4f-9cb8-2a34ef803017" />
+<img width="374" alt="image" src="https://github.com/user-attachments/assets/0ca9e981-e233-4277-99fa-a3b187d97fa8" />
 
 
-- Filter events by **Date** and/or **Location**
-- Utilize `HashMap<String, List<Event>>` for **constant‑time** lookups
-- Merge results when both filters are active
-- Gracefully handle edge cases (no filters, no matches)
 
-## Core Implementation
+## Migration Highlights
 
-```java
-// Build date‑indexed map
-Map<String, List<Event>> dateMap = new HashMap<>();
-for (Event e : allEvents) {
-    dateMap.computeIfAbsent(e.getDate(), k -> new ArrayList<>()).add(e);
-}
+1. **Refactored Data Access:**  
+   - Replaced SQLite `SQLiteOpenHelper` logic with Firestore `CollectionReference` and snapshot listeners.
+   - Converted synchronous queries into asynchronous listeners and callbacks.  
 
-// Filter logic example
-List<Event> dateMatches = dateMap.getOrDefault(selectedDate, Collections.emptyList());
-List<Event> locationMatches = locationMap.getOrDefault(selectedLocation, Collections.emptyList());
-List<Event> results;
-if (!dateMatches.isEmpty() && !locationMatches.isEmpty()) {
-    results = dateMatches.stream()
-        .filter(locationMatches::contains)
-        .collect(Collectors.toList());
-} else {
-    results = !dateMatches.isEmpty() ? dateMatches : locationMatches;
-}
-```
+2. **Data Modeling:**  
+   - Created `users` and `events` collections to mirror relational concepts in NoSQL.  
+   - Stored each event as a document with fields: `eventId`, `userId`, `name`, `location`, `date`, `time`.
+<img width="418" alt="image" src="https://github.com/user-attachments/assets/80483a50-3ace-4c5b-a9e0-7b83225ca986" />
 
-### Data Structures
+3. **Security Rules:**  
+   ```js
+   rules_version = '2';
+   service cloud.firestore {
+     match /databases/{database}/documents {
+       match /events/{eventId} {
+         allow read, write: if request.auth.uid == resource.data.userId || isAdmin(request.auth.uid);
+       }
+       function isAdmin(uid) {
+         return get(/databases/$(database)/documents/users/$(uid)).data.role == 'admin';
+       }
+     }
+   }
+   ```
 
-- `HashMap<String, List<Event>>` for date and location indexes
-
-### Filtering Algorithm
-
-1. Retrieve lists from `dateMap` and/or `locationMap`  
-2. If both filters set, compute their intersection  
-3. Display `results` or show a **No events matched** message
+4. **UI Integration:**  
+   - Updated `EventListActivity` and `AddEditEventActivity` to use Firestore references.  
+   - Implemented real-time listeners to auto-update RecyclerView on data changes.
 
 ## Testing & Validation
 
-- **Node.js Script:** `generate_test_data.js`  
-  - Generates **500 unique** events using Firebase Admin SDK  
-  - Validates performance under realistic load and edge conditions
-<img width="350" alt="image" src="https://github.com/user-attachments/assets/91e605c1-810a-478c-918d-fe5769295b6f" />
-
-
+- Verified real-time updates by running multiple emulator instances simultaneously.  
+- Confirmed data persistence and offline caching behavior.  
+- Ensured role-based access by testing as normal user vs. admin account.
 
 ## Learning Outcomes
 
-- Applied **algorithmic principles** for efficient event filtering  
-- Integrated Android UI (`DatePickerDialog`) with backend maps  
-- Ensured **UI responsiveness** by performing filtering off the main thread
+- Demonstrated **cloud database integration** in Android.  
+- Gained expertise in **asynchronous data handling** with Firestore listeners.  
+- Designed **security rules** to enforce user permissions.  
+- Improved app **scalability** and **user experience** with real-time sync.
 
 ## Challenges & Solutions
 
-- **Date Format Inconsistency:** Enforced `DatePickerDialog` to standardize input  
-- **Single‑Field Searches:** Independently handled date‑only and location‑only queries
+- **Asynchronous Refactor:** Needed to rethink data flow without blocking UI.  
+  - **Solution:** Used Firestore’s `addSnapshotListener` and updated UI on callback threads.
 
+- **Schema Flexibility:** No fixed schema in Firestore introduced complexity.  
+  - **Solution:** Defined a consistent document structure and validated inputs client-side.
 
+- **Security Rules Debugging:** Initial rules blocked admin writes.  
+  - **Solution:** Iteratively tested and refined the `isAdmin` helper function in rules.
 
