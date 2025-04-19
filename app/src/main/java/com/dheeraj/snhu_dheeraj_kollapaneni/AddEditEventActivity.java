@@ -1,152 +1,167 @@
 package com.dheeraj.snhu_dheeraj_kollapaneni;
 
-import android.Manifest;
-import android.annotation.SuppressLint;
 import android.app.DatePickerDialog;
 import android.app.TimePickerDialog;
-import android.content.Intent;
-import android.content.pm.PackageManager;
-import android.database.Cursor;
 import android.os.Bundle;
-import android.telephony.SmsManager;
+import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ProgressBar;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
+
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.DocumentReference;
+import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.FirebaseFirestore;
 
 import java.util.Calendar;
+import java.util.HashMap;
+import java.util.Map;
 
 public class AddEditEventActivity extends AppCompatActivity {
 
-    private EditText etEventName, etEventDate, etEventTime;
-    private DatabaseHelper dbHelper;
-    private int eventId = -1;  // Default -1 for new event
-    private static final int SMS_PERMISSION_CODE = 100;
+    private EditText etEventName, etEventLocation, etEventDate, etEventTime;
+    private Button btnSaveEvent;
+    private ProgressBar progressBar;
+
+    private FirebaseFirestore db;
+    private FirebaseAuth mAuth;
+    private FirebaseUser currentUser;
+    private Calendar calendar;
+
+    private String eventId;         // Will be non-null if we are editing
+    private boolean isEditMode;     // True if editing, false if creating new
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_add_event);
 
-        dbHelper = new DatabaseHelper(this);
         etEventName = findViewById(R.id.etEventName);
+        etEventLocation = findViewById(R.id.etEventLocation);
         etEventDate = findViewById(R.id.etEventDate);
         etEventTime = findViewById(R.id.etEventTime);
-        Button btnSaveEvent = findViewById(R.id.btnSaveEvent);
+        btnSaveEvent = findViewById(R.id.btnSaveEvent);
+        progressBar = findViewById(R.id.progressBar);
 
-        // Date picker setup
+        db = FirebaseFirestore.getInstance();
+        mAuth = FirebaseAuth.getInstance();
+        currentUser = mAuth.getCurrentUser();
+        calendar = Calendar.getInstance();
+
+        // Check if an event_id was passed in the Intent
+        eventId = getIntent().getStringExtra("event_id");
+        isEditMode = (eventId != null);
+
+        if (isEditMode) {
+            // If editing, load the existing event data from Firestore
+            loadEventData(eventId);
+        }
+
         etEventDate.setOnClickListener(v -> showDatePicker());
-
-        // Time picker setup
         etEventTime.setOnClickListener(v -> showTimePicker());
 
-        // Check if we are editing an existing event
-        Intent intent = getIntent();
-        if (intent.hasExtra("event_id")) {
-            eventId = intent.getIntExtra("event_id", -1);  // Get the event ID from intent
-            loadEventDetails(eventId);  // Load event details for editing
-        }
-
-        // Set save button click listener
-        btnSaveEvent.setOnClickListener(v -> {
-            String name = etEventName.getText().toString();
-            String date = etEventDate.getText().toString();
-            String time = etEventTime.getText().toString();
-
-            if (eventId == -1) {
-                // Add a new event
-                boolean isInserted = dbHelper.addEvent(name, date, time);
-                if (isInserted) {
-                    sendSmsNotification(name);
-                    Toast.makeText(AddEditEventActivity.this, "Event added", Toast.LENGTH_SHORT).show();
-                } else {
-                    Toast.makeText(AddEditEventActivity.this, "Failed to add event", Toast.LENGTH_SHORT).show();
-                }
-            } else {
-                // Update the existing event
-                boolean isUpdated = dbHelper.updateEvent(eventId, name, date, time);
-                if (isUpdated) {
-                    sendSmsNotification(name);
-                    Toast.makeText(AddEditEventActivity.this, "Event updated", Toast.LENGTH_SHORT).show();
-                } else {
-                    Toast.makeText(AddEditEventActivity.this, "Failed to update event", Toast.LENGTH_SHORT).show();
-                }
-            }
-
-            // Return result to previous activity
-            setResult(RESULT_OK);
-            finish();
-        });
+        btnSaveEvent.setOnClickListener(v -> saveEvent());
     }
 
-    // Show the date picker dialog
+    private void loadEventData(@NonNull String eventId) {
+        progressBar.setVisibility(View.VISIBLE);
+        db.collection("events")
+                .document(eventId)
+                .get()
+                .addOnSuccessListener(documentSnapshot -> {
+                    progressBar.setVisibility(View.GONE);
+                    if (documentSnapshot.exists()) {
+                        // Populate the fields
+                        String name = documentSnapshot.getString("name");
+                        String location = documentSnapshot.getString("location");
+                        String date = documentSnapshot.getString("date");
+                        String time = documentSnapshot.getString("time");
+
+                        etEventName.setText(name);
+                        etEventLocation.setText(location);
+                        etEventDate.setText(date);
+                        etEventTime.setText(time);
+                    } else {
+                        Toast.makeText(AddEditEventActivity.this, "Event not found", Toast.LENGTH_SHORT).show();
+                        finish();
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    progressBar.setVisibility(View.GONE);
+                    Toast.makeText(AddEditEventActivity.this, "Failed to load event data", Toast.LENGTH_SHORT).show();
+                    finish();
+                });
+    }
+
     private void showDatePicker() {
-        Calendar calendar = Calendar.getInstance();
-        int year = calendar.get(Calendar.YEAR);
-        int month = calendar.get(Calendar.MONTH);
-        int day = calendar.get(Calendar.DAY_OF_MONTH);
-
-        @SuppressLint("SetTextI18n") DatePickerDialog datePickerDialog = new DatePickerDialog(
-                AddEditEventActivity.this,
-                (view, year1, month1, dayOfMonth) -> etEventDate.setText(dayOfMonth + "/" + (month1 + 1) + "/" + year1),
-                year, month, day);
-        datePickerDialog.show();
+        DatePickerDialog datePicker = new DatePickerDialog(this, (view, year, month, dayOfMonth) -> {
+            etEventDate.setText(dayOfMonth + "/" + (month + 1) + "/" + year);
+        }, calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), calendar.get(Calendar.DAY_OF_MONTH));
+        datePicker.show();
     }
 
-    // Show the time picker dialog
     private void showTimePicker() {
-        Calendar calendar = Calendar.getInstance();
-        int hour = calendar.get(Calendar.HOUR_OF_DAY);
-        int minute = calendar.get(Calendar.MINUTE);
-
-        @SuppressLint("SetTextI18n") TimePickerDialog timePickerDialog = new TimePickerDialog(
-                AddEditEventActivity.this,
-                (view, hourOfDay, minute1) -> etEventTime.setText(hourOfDay + ":" + minute1),
-                hour, minute, true);
-        timePickerDialog.show();
+        TimePickerDialog timePicker = new TimePickerDialog(this, (view, hourOfDay, minute) -> {
+            etEventTime.setText(hourOfDay + ":" + minute);
+        }, calendar.get(Calendar.HOUR_OF_DAY), calendar.get(Calendar.MINUTE), true);
+        timePicker.show();
     }
 
-    // Load the details of the event to edit
-    private void loadEventDetails(int eventId) {
-        Cursor cursor = dbHelper.getEvent(eventId);
-        if (cursor != null && cursor.moveToFirst()) {
-            etEventName.setText(cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.COLUMN_EVENT_NAME)));
-            etEventDate.setText(cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.COLUMN_EVENT_DATE)));
-            etEventTime.setText(cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.COLUMN_EVENT_TIME)));
-            cursor.close();
+    private void saveEvent() {
+        String eventName = etEventName.getText().toString().trim();
+        String eventLocation = etEventLocation.getText().toString().trim();
+        String eventDate = etEventDate.getText().toString().trim();
+        String eventTime = etEventTime.getText().toString().trim();
+
+        if (eventName.isEmpty() || eventLocation.isEmpty() || eventDate.isEmpty() || eventTime.isEmpty()) {
+            Toast.makeText(this, "Please fill all fields", Toast.LENGTH_SHORT).show();
+            return;
         }
-    }
 
-    // Send SMS notification after adding/updating an event
-    private void sendSmsNotification(String eventName) {
-        String phoneNumber = "5551234567";  // Replace with actual phone number, or get dynamically
+        progressBar.setVisibility(View.VISIBLE);
 
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS) == PackageManager.PERMISSION_GRANTED) {
-            // Permission granted, send the SMS
-            SmsManager smsManager = SmsManager.getDefault();
-            smsManager.sendTextMessage(phoneNumber, null, "A new event has been created: " + eventName, null, null);
-            Toast.makeText(this, "SMS sent to " + phoneNumber, Toast.LENGTH_SHORT).show();
+        // Prepare the event data
+        Map<String, Object> event = new HashMap<>();
+        event.put("name", eventName);
+        event.put("location", eventLocation);
+        event.put("date", eventDate);
+        event.put("time", eventTime);
+
+        if (isEditMode) {
+            // If editing, just update the existing document
+            db.collection("events")
+                    .document(eventId)
+                    .update(event)
+                    .addOnSuccessListener(aVoid -> {
+                        progressBar.setVisibility(View.GONE);
+                        Toast.makeText(AddEditEventActivity.this, "Event updated", Toast.LENGTH_SHORT).show();
+                        finish();
+                    })
+                    .addOnFailureListener(e -> {
+                        progressBar.setVisibility(View.GONE);
+                        Toast.makeText(AddEditEventActivity.this, "Failed to update event", Toast.LENGTH_SHORT).show();
+                    });
         } else {
-            // Request permission if not granted
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.SEND_SMS}, SMS_PERMISSION_CODE);
-        }
-    }
+            // If creating new, also set status and userId
+            event.put("userId", currentUser.getUid());
+            event.put("status", "pending");  // newly created events are "pending" admin approval
 
-    // Handle the result of permission request
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == SMS_PERMISSION_CODE) {
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                String eventName = etEventName.getText().toString();
-                sendSmsNotification(eventName);
-            } else {
-                Toast.makeText(this, "SMS permission denied", Toast.LENGTH_SHORT).show();
-            }
+            db.collection("events")
+                    .add(event)
+                    .addOnSuccessListener(documentReference -> {
+                        progressBar.setVisibility(View.GONE);
+                        Toast.makeText(AddEditEventActivity.this, "Event submitted for approval", Toast.LENGTH_SHORT).show();
+                        finish();
+                    })
+                    .addOnFailureListener(e -> {
+                        progressBar.setVisibility(View.GONE);
+                        Toast.makeText(AddEditEventActivity.this, "Failed to submit event", Toast.LENGTH_SHORT).show();
+                    });
         }
     }
 }

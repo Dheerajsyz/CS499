@@ -1,158 +1,92 @@
-# EventManager Android App (Base Version – SQLite)
+# Enhancement One: Software Design & Engineering
 
-A simple Android-based event management application using a local SQLite database.  
-Provides user sign‑up/login and basic event creation, viewing, and editing — all stored on the device.
+**Author:** Dheeraj Kollapaneni  
+**Date:** 03/21/2025
 
----
+## Artifact Overview
 
-## Table of Contents
+- **Project:** Android Event Manager App (CS-360)  
+- **Pre‑Enhancement State:** Basic event creation and viewing with no access control or approval workflows
 
-- [Features](#features)  
-- [Prerequisites](#prerequisites)  
-- [Installation](#installation)  
-- [Database (SQLite) Setup](#database-sqlite-setup)  
-- [Build & Run](#build--run)  
-- [Usage](#usage)  
-- [Project Structure](#project-structure)  
+## Enhancement Focus
+**Enhancement One: Software Design/Engineering**
 
----
+### Summary
+I enhanced the Android event management application by introducing robust **security**, **user management**, and **usability** features. Key goals were:
 
-## Features
+- Implement **role-based access control**  
+- Add **secure authentication** methods  
+- Create **event approval workflows**  
+- Improve overall **usability** and **app structure**
 
-- **User Authentication**  
-  - Sign up with email & password  
-  - Log in to your account  
-- **Local Data Storage** (SQLite)  
-  - `users` table: stores `id`, `email`, `password` (hashed or plaintext)  
-  - `events` table: stores `id`, `user_id`, `name`, `location`, `date`, `time`  
-- **Event Management**  
-  - View a list of your events  
-  - Add new events (name, location, date & time)  
-  - Edit existing events  
-- **Floating Action Button (FAB)** to add events  
-- **SMS Permission Handling** (request on first launch)
+## Role-Based Access Control
 
----
+- Only **admins** can access the **Admin Panel**  
+- Admins can **approve, reject, edit, or delete** events  
+- Admins can **promote**, **demote**, or **delete** users  
+- Regular users can **submit** and **edit** events, but these remain **hidden until approved**
 
-## Prerequisites
+<div align="center">
+  <img src="images/art1-Picture1.png" alt="Artifact 1 Image 1" width="292" height="616">  
+  <img src="images/art1-Picture2.png" alt="Artifact 1 Image 2" width="292" height="616">
+</div>
 
-- Android Studio (Arctic Fox or later)  
-- JDK 11 or newer  
-- Android SDK (API Level 21+)  
-- A physical device or emulator (Android 5.0+)
+## Admin Panel
 
----
+The Admin Panel features three tabs:
 
-## Installation
+1. **User Management** – View all users; promote/demote/delete accounts  
+2. **Pending Events** – Review and approve or reject new submissions  
+3. **Event Management** – Full CRUD access to all events
 
-1. **Clone the repository**  
+<div align="center">
+  <img src="images/art1-Picture3.png" alt="Artifact 1 Image 3" width="292" height="616">  
+  <img src="images/art1-Picture4.png" alt="Artifact 1 Image 4" width="292" height="616">  
+  <img src="images/art1-Picture5.png" alt="Artifact 1 Image 5" width="292" height="616">
+</div>
 
+## Google Sign-In & Password Reset
 
-2. **Open in Android Studio**  
-   - Launch Android Studio → **Open an existing project** → select the cloned folder.
+- **Google Sign-In** integration for streamlined login  
+- **Forgot Password** feature via Firebase email reset links
 
-3. **Sync Gradle**  
-   - Click **Sync Now** when prompted, or go to **File → Sync Project with Gradle Files**.
+<div align="center">
+  <img src="images/art1-Picture6.png" alt="Artifact 1 Image 6" width="292" height="616">  
+  <img src="images/art1-Picture7.png" alt="Artifact 1 Image 7" width="292" height="616">
+</div>
 
----
+## Logout Confirmation
 
-## Database (SQLite) Setup
+Added a confirmation dialog to prevent accidental logouts, enhancing user experience and reducing data loss risk.
 
-The app uses an internal SQLite database via a `SQLiteOpenHelper` subclass - `DatabaseHelper.java`. No manual setup is needed:
+<div align="center">
+  <img src="images/art1-Picture8.png" alt="Artifact 1 Image 8" width="292" height="616">
+</div>
 
-```java
-public class DatabaseHelper extends SQLiteOpenHelper {
-    private static final String DB_NAME = "event_manager.db";
-    private static final int DB_VERSION = 1;
+## Admin-Only Event Visibility
 
-    // Users table
-    private static final String CREATE_USERS_TABLE =
-        "CREATE TABLE users (" +
-        "id INTEGER PRIMARY KEY AUTOINCREMENT," +
-        "email TEXT UNIQUE NOT NULL," +
-        "password TEXT NOT NULL" +
-        ");";
+- Unapproved events are **hidden** from regular users  
+- Admins review submissions before they become publicly visible
 
-    // Events table
-    private static final String CREATE_EVENTS_TABLE =
-        "CREATE TABLE events (" +
-        "id INTEGER PRIMARY KEY AUTOINCREMENT," +
-        "user_id INTEGER NOT NULL," +
-        "name TEXT NOT NULL," +
-        "location TEXT," +
-        "date TEXT," +
-        "time TEXT," +
-        "FOREIGN KEY(user_id) REFERENCES users(id)" +
-        ");";
+<div align="center">
+  <img src="images/art1-Picture9.png" alt="Artifact 1 Image 9" width="292" height="616">  
+  <img src="images/art1-Picture10.png" alt="Artifact 1 Image 10" width="292" height="616">
+</div>
 
-    @Override
-    public void onCreate(SQLiteDatabase db) {
-        db.execSQL(CREATE_USERS_TABLE);
-        db.execSQL(CREATE_EVENTS_TABLE);
-    }
+## Engineering Challenges Solved
 
-    // ... onUpgrade(), helper methods for CRUD operations ...
-}
-```
+- Applied **software design principles** for security and structure  
+- Handled **Firebase authentication errors** gracefully  
+- Fixed **Google Sign-In error code 10** by updating SHA-1 configuration  
+- Refined UI layouts to enhance usability and consistency
 
-When the app is first launched, the database and tables are created automatically.
+## Final Outcome
+
+These enhancements demonstrate my capability to:
+
+- Design and implement **secure**, **structured** mobile applications  
+- Integrate cloud-based authentication (Firebase & Google Sign-In)  
+- Implement and manage **scalable RBAC** systems  
+- Elevate app **usability** and **workflow** through informed design choices
 
 ---
-
-## Build & Run
-
-1. Connect an Android device or start an emulator (API 21+).  
-2. In Android Studio, click the **Run** ▶️ button.  
-3. The app will install and launch on your device.
-
----
-
-## Usage
-
-1. **Sign Up**  
-   - Tap **Sign Up**, enter email & password, then **Register**.  
-2. **Log In**  
-   - Enter your credentials and tap **Login**.  
-3. **View Events**  
-   - After login, see a list of all events you’ve created.  
-4. **Add Event**  
-   - Tap the **+** FAB → fill in **Name**, **Location**, **Date**, **Time** → **Save**.  
-5. **Edit Event**  
-   - Tap an existing event → modify fields → **Save**.  
-6. **SMS Permission**  
-   - On first launch, grant SMS permission when prompted (for future notification features).
-
----
-
-## Project Structure
-
-```plaintext
-app/
-├─ src/main/
-│  ├─ java/com/example/eventmanager/
-│  │  ├─ activities/
-│  │  │  ├─ LoginActivity.java
-│  │  │  ├─ SignUpActivity.java
-│  │  │  ├─ MainActivity.java
-│  │  │  ├─ EventListActivity.java
-│  │  │  └─ AddEditEventActivity.java
-│  │  ├─ data/
-│  │  │  └─ DatabaseHelper.java
-│  │  └─ models/
-│  │     ├─ User.java
-│  │     └─ Event.java
-│  ├─ res/
-│  │  ├─ layout/
-│  │  │  ├─ activity_login.xml
-│  │  │  ├─ activity_signup.xml
-│  │  │  ├─ activity_main.xml
-│  │  │  ├─ activity_event_list.xml
-│  │  │  └─ activity_add_event.xml
-│  │  └─ menu/
-│  │     └─ navi.xml
-└─ build.gradle
-```
-
----
-
-
