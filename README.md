@@ -1,158 +1,78 @@
-# EventManager Android App (Base Version – SQLite)
+# Enhancement Two: Algorithms & Data Structures
 
-A simple Android-based event management application using a local SQLite database.  
-Provides user sign‑up/login and basic event creation, viewing, and editing — all stored on the device.
+**Author:** Dheeraj Kollapaneni  
+**Date:** March 28, 2025
 
----
+## Artifact Overview
 
-## Table of Contents
+- **Project:** Android Event Manager App (CS-360)
+- **Pre‑Enhancement:** User authentication and CRUD operations via Firebase Firestore
 
-- [Features](#features)  
-- [Prerequisites](#prerequisites)  
-- [Installation](#installation)  
-- [Database (SQLite) Setup](#database-sqlite-setup)  
-- [Build & Run](#build--run)  
-- [Usage](#usage)  
-- [Project Structure](#project-structure)  
+## Enhancement Summary
 
----
-
-## Features
-
-- **User Authentication**  
-  - Sign up with email & password  
-  - Log in to your account  
-- **Local Data Storage** (SQLite)  
-  - `users` table: stores `id`, `email`, `password` (hashed or plaintext)  
-  - `events` table: stores `id`, `user_id`, `name`, `location`, `date`, `time`  
-- **Event Management**  
-  - View a list of your events  
-  - Add new events (name, location, date & time)  
-  - Edit existing events  
-- **Floating Action Button (FAB)** to add events  
-- **SMS Permission Handling** (request on first launch)
-
----
-
-## Prerequisites
-
-- Android Studio (Arctic Fox or later)  
-- JDK 11 or newer  
-- Android SDK (API Level 21+)  
-- A physical device or emulator (Android 5.0+)
-
----
-
-## Installation
-
-1. **Clone the repository**  
+For **Milestone Three**, I implemented an advanced **search & filtering** feature to demonstrate algorithmic and data structure proficiency:
+<img width="150" alt="image" src="https://github.com/user-attachments/assets/a392972c-bc99-41d1-9e39-04c0b58b9166" />
+<img width="150" alt="image" src="https://github.com/user-attachments/assets/560d9834-4f95-4294-ab00-ab6fb0f280d8" />
+<img width="150" alt="image" src="https://github.com/user-attachments/assets/f4a2c46b-a71d-45bf-9d78-634ee42e37f5" />
+<img width="150" alt="image" src="https://github.com/user-attachments/assets/e2713aa6-792c-4ffb-8c07-3fee29eace46" />
 
 
-2. **Open in Android Studio**  
-   - Launch Android Studio → **Open an existing project** → select the cloned folder.
+- Filter events by **Date** and/or **Location**
+- Utilize `HashMap<String, List<Event>>` for **constant‑time** lookups
+- Merge results when both filters are active
+- Gracefully handle edge cases (no filters, no matches)
 
-3. **Sync Gradle**  
-   - Click **Sync Now** when prompted, or go to **File → Sync Project with Gradle Files**.
-
----
-
-## Database (SQLite) Setup
-
-The app uses an internal SQLite database via a `SQLiteOpenHelper` subclass - `DatabaseHelper.java`. No manual setup is needed:
+## Core Implementation
 
 ```java
-public class DatabaseHelper extends SQLiteOpenHelper {
-    private static final String DB_NAME = "event_manager.db";
-    private static final int DB_VERSION = 1;
+// Build date‑indexed map
+Map<String, List<Event>> dateMap = new HashMap<>();
+for (Event e : allEvents) {
+    dateMap.computeIfAbsent(e.getDate(), k -> new ArrayList<>()).add(e);
+}
 
-    // Users table
-    private static final String CREATE_USERS_TABLE =
-        "CREATE TABLE users (" +
-        "id INTEGER PRIMARY KEY AUTOINCREMENT," +
-        "email TEXT UNIQUE NOT NULL," +
-        "password TEXT NOT NULL" +
-        ");";
-
-    // Events table
-    private static final String CREATE_EVENTS_TABLE =
-        "CREATE TABLE events (" +
-        "id INTEGER PRIMARY KEY AUTOINCREMENT," +
-        "user_id INTEGER NOT NULL," +
-        "name TEXT NOT NULL," +
-        "location TEXT," +
-        "date TEXT," +
-        "time TEXT," +
-        "FOREIGN KEY(user_id) REFERENCES users(id)" +
-        ");";
-
-    @Override
-    public void onCreate(SQLiteDatabase db) {
-        db.execSQL(CREATE_USERS_TABLE);
-        db.execSQL(CREATE_EVENTS_TABLE);
-    }
-
-    // ... onUpgrade(), helper methods for CRUD operations ...
+// Filter logic example
+List<Event> dateMatches = dateMap.getOrDefault(selectedDate, Collections.emptyList());
+List<Event> locationMatches = locationMap.getOrDefault(selectedLocation, Collections.emptyList());
+List<Event> results;
+if (!dateMatches.isEmpty() && !locationMatches.isEmpty()) {
+    results = dateMatches.stream()
+        .filter(locationMatches::contains)
+        .collect(Collectors.toList());
+} else {
+    results = !dateMatches.isEmpty() ? dateMatches : locationMatches;
 }
 ```
 
-When the app is first launched, the database and tables are created automatically.
+### Data Structures
 
----
+- `HashMap<String, List<Event>>` for date and location indexes
 
-## Build & Run
+### Filtering Algorithm
 
-1. Connect an Android device or start an emulator (API 21+).  
-2. In Android Studio, click the **Run** ▶️ button.  
-3. The app will install and launch on your device.
+1. Retrieve lists from `dateMap` and/or `locationMap`  
+2. If both filters set, compute their intersection  
+3. Display `results` or show a **No events matched** message
 
----
+## Testing & Validation
 
-## Usage
+- **Node.js Script:** `generate_test_data.js`  
+  - Generates **500 unique** events using Firebase Admin SDK  
+  - Validates performance under realistic load and edge conditions
+<img width="350" alt="image" src="https://github.com/user-attachments/assets/91e605c1-810a-478c-918d-fe5769295b6f" />
 
-1. **Sign Up**  
-   - Tap **Sign Up**, enter email & password, then **Register**.  
-2. **Log In**  
-   - Enter your credentials and tap **Login**.  
-3. **View Events**  
-   - After login, see a list of all events you’ve created.  
-4. **Add Event**  
-   - Tap the **+** FAB → fill in **Name**, **Location**, **Date**, **Time** → **Save**.  
-5. **Edit Event**  
-   - Tap an existing event → modify fields → **Save**.  
-6. **SMS Permission**  
-   - On first launch, grant SMS permission when prompted (for future notification features).
 
----
 
-## Project Structure
+## Learning Outcomes
 
-```plaintext
-app/
-├─ src/main/
-│  ├─ java/com/example/eventmanager/
-│  │  ├─ activities/
-│  │  │  ├─ LoginActivity.java
-│  │  │  ├─ SignUpActivity.java
-│  │  │  ├─ MainActivity.java
-│  │  │  ├─ EventListActivity.java
-│  │  │  └─ AddEditEventActivity.java
-│  │  ├─ data/
-│  │  │  └─ DatabaseHelper.java
-│  │  └─ models/
-│  │     ├─ User.java
-│  │     └─ Event.java
-│  ├─ res/
-│  │  ├─ layout/
-│  │  │  ├─ activity_login.xml
-│  │  │  ├─ activity_signup.xml
-│  │  │  ├─ activity_main.xml
-│  │  │  ├─ activity_event_list.xml
-│  │  │  └─ activity_add_event.xml
-│  │  └─ menu/
-│  │     └─ navi.xml
-└─ build.gradle
-```
+- Applied **algorithmic principles** for efficient event filtering  
+- Integrated Android UI (`DatePickerDialog`) with backend maps  
+- Ensured **UI responsiveness** by performing filtering off the main thread
 
----
+## Challenges & Solutions
+
+- **Date Format Inconsistency:** Enforced `DatePickerDialog` to standardize input  
+- **Single‑Field Searches:** Independently handled date‑only and location‑only queries
+
 
 
